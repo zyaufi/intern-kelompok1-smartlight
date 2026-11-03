@@ -1,15 +1,11 @@
 package com.example.intern_kelompok1;
 
 import android.content.SharedPreferences;
-import android.graphics.PorterDuff;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -18,25 +14,16 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-
+import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity implements ZeroMQService.Listener {
 
 
-    private LinearLayout pillStatus;
-    private View dotStatus;
-    private TextView tvConnectionStatus, tvVoltage, tvVoltageUnit, tvLedStatus;
-    private View dotLed;
-    private TextView tvServerInfo;
-
-
+    private TextView statusKoneksi, teganganSTM, statusLed, server;
+    private TextView kecerahan, mode, warning;
     private Button btnConnect, btnOn, btnOff;
-
-
     private Switch switchMode;
-    private SeekBar seekBrightness;
-    private TextView tvBrightnessValue, tvModeLabel, tvManualHint;
-    private ProgressBar pbVoltage;
+    private SeekBar ngaturCerah;
 
     private ZeroMQService zeroMQService;
     private SharedPreferences prefs;
@@ -44,7 +31,7 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
     private boolean isManualMode = false;
     private int brightnessLevel = 50;
 
-    private static final String PREF_NAME = "SmartLightPrefs";
+    private static final String PREF_NAME = "SmartLight";
     private static final String KEY_IP = "server_ip";
     private static final String KEY_PORT = "server_port";
 
@@ -54,6 +41,7 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
         setContentView(R.layout.activity_main);
 
         bindViews();
+
         prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
         zeroMQService = new ZeroMQService(this);
 
@@ -62,44 +50,37 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
     }
 
     private void bindViews() {
-        pillStatus = findViewById(R.id.pillStatus);
-        dotStatus = findViewById(R.id.dotStatus);
-        tvConnectionStatus = findViewById(R.id.tvConnectionStatus);
-        tvServerInfo = findViewById(R.id.tvServerInfo);
-        tvVoltage = findViewById(R.id.tvVoltage);
-        tvVoltageUnit = findViewById(R.id.tvVoltageUnit);
-        tvLedStatus = findViewById(R.id.tvLedStatus);
-        dotLed = findViewById(R.id.dotLed);
-        pbVoltage = findViewById(R.id.pbVoltage);
+        statusKoneksi = findViewById(R.id.statusKoneksi);
+        server = findViewById(R.id.server);
+        teganganSTM = findViewById(R.id.teganganSTM);
+        statusLed = findViewById(R.id.statusLed);
 
         btnConnect = findViewById(R.id.btnConnect);
         btnOn = findViewById(R.id.btnOn);
         btnOff = findViewById(R.id.btnOff);
 
         switchMode = findViewById(R.id.switchMode);
-        seekBrightness = findViewById(R.id.seekBrightness);
-        tvBrightnessValue = findViewById(R.id.tvBrightnessValue);
-        tvModeLabel = findViewById(R.id.tvModeLabel);
-        tvManualHint = findViewById(R.id.tvManualHint);
-
-
-        pbVoltage.setMax(330);
+        ngaturCerah = findViewById(R.id.ngaturCerah);
+        kecerahan = findViewById(R.id.kecerahan);
+        mode = findViewById(R.id.mode);
+        warning = findViewById(R.id.warning);
     }
 
     private void setupListeners() {
         btnConnect.setOnClickListener(v -> showIpDialog());
-
         btnOn.setOnClickListener(v -> {
             if (!zeroMQService.isConnected()) {
                 Toast.makeText(this, "Belum terhubung ke server", Toast.LENGTH_SHORT).show();
                 return;
             }
             zeroMQService.sendCommand("ON");
-            if (isManualMode) zeroMQService.sendCommand("BRIGHT:" + brightnessLevel);
+            if (isManualMode) {
+                zeroMQService.sendCommand("BRIGHT:" + brightnessLevel);
+            }
             ledIsOn = true;
             updateLedUI();
         });
-
+        
         btnOff.setOnClickListener(v -> {
             if (!zeroMQService.isConnected()) {
                 Toast.makeText(this, "Belum terhubung ke server", Toast.LENGTH_SHORT).show();
@@ -110,41 +91,43 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
             updateLedUI();
         });
 
+      
         switchMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
             isManualMode = isChecked;
-            seekBrightness.setEnabled(isChecked);
 
             if (isChecked) {
-                // Mode MANUAL
-                tvModeLabel.setText("MANUAL");
-                tvModeLabel.setTextColor(ContextCompat.getColor(this, R.color.accent_manual));
-                tvManualHint.setText("Potensio diabaikan — kontrol via slider");
-                tvManualHint.setTextColor(ContextCompat.getColor(this, R.color.accent_manual));
+                ngaturCerah.setAlpha(1f);
+                mode.setText("MANUAL");
+                mode.setTextColor(ContextCompat.getColor(this, R.color.oranye));
+                warning.setText("Potensio diabaikan — kontrol via slider");
+                warning.setTextColor(ContextCompat.getColor(this, R.color.oranye));
                 zeroMQService.sendCommand("MODE:MANUAL");
-                seekBrightness.setAlpha(1f);
             } else {
-
-                tvModeLabel.setText("AUTO (Potensio)");
-                tvModeLabel.setTextColor(ContextCompat.getColor(this, R.color.accent_auto));
-                tvManualHint.setText("Aktifkan switch untuk kontrol manual");
-                tvManualHint.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+                ngaturCerah.setEnabled(true); //  HARUS TRUE biar bisa digeser oleh kode JSON
+                mode.setText("AUTO (Potensio)");
+                mode.setTextColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark));
+                warning.setText("Aktifkan switch untuk kontrol manual");
+                warning.setTextColor(ContextCompat.getColor(this, R.color.text_gray));
                 zeroMQService.sendCommand("MODE:AUTO");
-                seekBrightness.setAlpha(0.4f);
+                ngaturCerah.setAlpha(0.4f);
             }
-
-
-            tvModeLabel.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in));
         });
 
-        seekBrightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        
+        ngaturCerah.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                brightnessLevel = progress;
-                tvBrightnessValue.setText(progress + "%");
-            }
+                kecerahan.setText(progress + "%");
 
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                // Hanya simpan brightnessLevel jika yang menggeser adalah USER (bukan kode Python)
+                if (fromUser) {
+                    brightnessLevel = progress;
+                }
+            }
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
                 if (zeroMQService.isConnected() && isManualMode && ledIsOn) {
                     zeroMQService.sendCommand("BRIGHT:" + brightnessLevel);
                 }
@@ -155,8 +138,8 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
     private void restoreSavedServer() {
         String savedIp = prefs.getString(KEY_IP, "192.168.1.10");
         int savedPort = prefs.getInt(KEY_PORT, 5555);
-        tvServerInfo.setText("Server: " + savedIp + ":" + savedPort);
-        seekBrightness.setAlpha(0.4f); // default disabled look
+        server.setText("Server: " + savedIp + ":" + savedPort);
+        ngaturCerah.setAlpha(0.4f);
     }
 
     private void showIpDialog() {
@@ -183,7 +166,7 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
 
             int port = Integer.parseInt(portStr);
             prefs.edit().putString(KEY_IP, ip).putInt(KEY_PORT, port).apply();
-            tvServerInfo.setText("Server: " + ip + ":" + port);
+            server.setText("Server: " + ip + ":" + port);
 
             updateConnectionUI(false, "MENGHUBUNGKAN...");
             zeroMQService.connect(ip, port);
@@ -194,39 +177,25 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
 
     private void updateConnectionUI(boolean connected, String text) {
         if (connected) {
-            pillStatus.setBackgroundResource(R.drawable.bg_pill_connected);
-            dotStatus.getBackground().setColorFilter(
-                    ContextCompat.getColor(this, R.color.status_connected),
-                    PorterDuff.Mode.SRC_IN);
-            tvConnectionStatus.setText("TERHUBUNG");
-            tvConnectionStatus.setTextColor(ContextCompat.getColor(this, R.color.status_connected));
+            statusKoneksi.setText(" TERHUBUNG");
+            statusKoneksi.setTextColor(ContextCompat.getColor(this, R.color.hijau));
         } else {
-            pillStatus.setBackgroundResource(R.drawable.bg_pill_disconnected);
-            dotStatus.getBackground().setColorFilter(
-                    ContextCompat.getColor(this, R.color.status_disconnected),
-                    PorterDuff.Mode.SRC_IN);
-            tvConnectionStatus.setText(text != null ? text : "TERPUTUS");
-            tvConnectionStatus.setTextColor(ContextCompat.getColor(this, R.color.status_disconnected));
+            statusKoneksi.setText(text != null ? text : "TERPUTUS");
+            statusKoneksi.setTextColor(ContextCompat.getColor(this, R.color.jingga));
         }
     }
 
     private void updateLedUI() {
         if (ledIsOn) {
-            tvLedStatus.setText("ON");
-            tvLedStatus.setTextColor(ContextCompat.getColor(this, R.color.status_connected));
-            dotLed.getBackground().setColorFilter(
-                    ContextCompat.getColor(this, R.color.status_connected),
-                    PorterDuff.Mode.SRC_IN);
+            statusLed.setText("LED: ON");
+            statusLed.setTextColor(ContextCompat.getColor(this, R.color.hijau));
         } else {
-            tvLedStatus.setText("OFF");
-            tvLedStatus.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
-            dotLed.getBackground().setColorFilter(
-                    0xFF9E9E9E, PorterDuff.Mode.SRC_IN);
+            statusLed.setText("LED: OFF");
+            statusLed.setTextColor(ContextCompat.getColor(this, R.color.text_gray)); // Ini yang diganti
         }
     }
 
-
-
+    // ===== CALLBACK DARI ZeroMQService =====
     @Override
     public void onConnected() {
         updateConnectionUI(true, "TERHUBUNG");
@@ -239,15 +208,28 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
         Toast.makeText(this, "Koneksi gagal: " + reason, Toast.LENGTH_LONG).show();
     }
 
+
     @Override
-    public void onVoltageReceived(String voltage) {
-        tvVoltage.setText(voltage);
-        // Update progress bar (konversi "2.45" → 245)
+    public void onVoltageReceived(String dataJson) {
         try {
-            float v = Float.parseFloat(voltage);
-            int progress = Math.min(330, (int) (v * 100));
-            pbVoltage.setProgress(progress);
-        } catch (NumberFormatException ignored) {}
+            JSONObject json = new JSONObject(dataJson);
+            String voltage = json.getString("v");
+            int pwmPercent = json.getInt("p"); // Nilai 0-100
+
+            teganganSTM.setText(voltage + " V");
+
+
+            if (!isManualMode) {
+
+                ngaturCerah.setProgress(pwmPercent);
+                kecerahan.setText(pwmPercent + "%");
+
+            }
+
+        } catch (Exception e) {
+            // misal python ga ngirim Json setidaknya tegangan tetep kebaca meskipun slider ga gerak
+            teganganSTM.setText(dataJson);
+        }
     }
 
     @Override
