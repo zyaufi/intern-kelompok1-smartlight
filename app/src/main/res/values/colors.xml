@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Dark Theme Background -->
+    <color name="bg_dark">#0B1220</color>
+    <color name="bg_card">#141E30</color>
+
+    <!-- Accent AUTO (Biru Neon) -->
+    <color name="accent_auto">#00E5FF</color>
+    <color name="accent_auto_dark">#0091B3</color>
+
+    <!-- Accent MANUAL (Amber/Oranye) -->
+    <color name="accent_manual">#FFB300</color>
+    <color name="accent_manual_dark">#CC8E00</color>
+
+    <!-- Status -->
+    <color name="status_connected">#00E676</color>
+    <color name="status_disconnected">#FF5252</color>
+    <color name="text_primary">#E0E6F1</color>
+    <color name="text_secondary">#8899B3</color>
+
+    <!-- Tombol -->
+    <color name="btn_on_green">#00C853</color>
+    <color name="btn_off_red">#D50000</color>
+</resources>
