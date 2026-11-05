@@ -1,15 +1,33 @@
+# Android Studio
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
+.gradle/
+local.properties
+.idea/
+build/
+captures/
 .externalNativeBuild
 .cxx
-local.properties
+*.apk
+*.aab
+
+# STM32CubeIDE
+Debug/
+Release/
+*.o
+*.d
+*.elf
+*.map
+*.su
+*.cyclo
+.metadata/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+.env
+
+# OS
+.DS_Store
+Thumbs.db

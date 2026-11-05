@@ -2,7 +2,7 @@ package com.example.intern_kelompok1;
 
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log; // Tambahan untuk Logcat
+import android.util.Log;
 
 import org.zeromq.SocketType;
 import org.zeromq.ZContext;
@@ -15,8 +15,8 @@ public class ZeroMQService {
     public interface Listener {
         void onConnected();
         void onDisconnected(String reason);
-        void onVoltageReceived(String voltage);
-        void onLedStatusReceived(String status);
+        void terimaDataTegangan(String voltage);
+        void terimaStatusLed(String status);
     }
 
     private ZContext context;
@@ -25,8 +25,6 @@ public class ZeroMQService {
     private volatile boolean isRunning = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Listener listener;
-
-    // Antrean perintah agar tidak bentrok dengan thread utama
     private final LinkedBlockingQueue<String> commandQueue = new LinkedBlockingQueue<>();
 
     public ZeroMQService(Listener listener) {
@@ -44,19 +42,18 @@ public class ZeroMQService {
         try {
             context = new ZContext();
             socket = context.createSocket(SocketType.REQ);
-            socket.setReceiveTimeOut(2000);
-            socket.setSendTimeOut(2000);
-            socket.setLinger(0); // Agar socket langsung tertutup saat disconnect
+            socket.setReceiveTimeOut(5000);
+            socket.setSendTimeOut(5000);
+            socket.setLinger(0);
 
             Log.d("ZMQ_DEBUG", "Mencoba connect ke tcp://" + ip + ":" + port);
             socket.connect("tcp://" + ip + ":" + port);
 
-            // --- PING AWAL ---
-            socket.send("GET_VOLTAGE", 0);
+            socket.send("TEGANGAN", 0);
             byte[] reply = socket.recv(0);
 
             if (reply == null) {
-                mainHandler.post(() -> listener.onDisconnected("Timeout: Server tidak merespon (Cek IP/Firewall)"));
+                mainHandler.post(() -> listener.onDisconnected("Server tidak merespon"));
                 isRunning = false;
                 return;
             }
@@ -64,22 +61,19 @@ public class ZeroMQService {
             Log.d("ZMQ_DEBUG", "Berhasil terhubung ke server!");
             mainHandler.post(listener::onConnected);
 
-            // --- LOOP UTAMA ---
             while (isRunning) {
                 try {
-                    // 1. Cek apakah ada perintah dari UI (ON/OFF/BRIGHT)
                     String cmd = commandQueue.poll();
                     if (cmd != null) {
                         Log.d("ZMQ_DEBUG", "Mengirim perintah: " + cmd);
                         socket.send(cmd, 0);
-                        socket.recv(0); // Tunggu balasan "OK"
+                        socket.recv(0);
                     } else {
-                        // 2. Jika tidak ada perintah, minta tegangan
-                        socket.send("GET_VOLTAGE", 0);
+                        socket.send("TEGANGAN", 0);
                         byte[] data = socket.recv(0);
                         if (data != null) {
                             final String voltage = new String(data).trim();
-                            mainHandler.post(() -> listener.onVoltageReceived(voltage));
+                            mainHandler.post(() -> listener.terimaDataTegangan(voltage));
                         }
                     }
                     Thread.sleep(300);
@@ -95,7 +89,7 @@ public class ZeroMQService {
             }
 
         } catch (Exception e) {
-            Log.e("ZMQ_ERR", "Gagal connect: " + e.getMessage(), e); // LOG PENTING
+            Log.e("ZMQ_ERR", "Gagal connect: " + e.getMessage(), e);
             final String err = e.getMessage() != null ? e.getMessage() : "Unknown Error";
             mainHandler.post(() -> listener.onDisconnected(err));
         } finally {
@@ -105,7 +99,6 @@ public class ZeroMQService {
 
     public void sendCommand(String command) {
         if (isRunning) {
-            // Hanya masukkan ke antrean. Thread di atas yang akan mengirimnya.
             commandQueue.offer(command);
         }
     }

@@ -14,7 +14,6 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity implements ZeroMQService.Listener {
 
@@ -39,7 +38,7 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+//        kecerahan.setVisibility(View.INVISIBLE);
         bindViews();
 
         prefs = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
@@ -54,11 +53,9 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
         server = findViewById(R.id.server);
         teganganSTM = findViewById(R.id.teganganSTM);
         statusLed = findViewById(R.id.statusLed);
-
         btnConnect = findViewById(R.id.btnConnect);
         btnOn = findViewById(R.id.btnOn);
         btnOff = findViewById(R.id.btnOff);
-
         switchMode = findViewById(R.id.switchMode);
         ngaturCerah = findViewById(R.id.ngaturCerah);
         kecerahan = findViewById(R.id.kecerahan);
@@ -73,37 +70,38 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
                 Toast.makeText(this, "Belum terhubung ke server", Toast.LENGTH_SHORT).show();
                 return;
             }
-            zeroMQService.sendCommand("ON");
+            zeroMQService.sendCommand("1");
             if (isManualMode) {
                 zeroMQService.sendCommand("BRIGHT:" + brightnessLevel);
             }
             ledIsOn = true;
             updateLedUI();
         });
-        
+
         btnOff.setOnClickListener(v -> {
             if (!zeroMQService.isConnected()) {
                 Toast.makeText(this, "Belum terhubung ke server", Toast.LENGTH_SHORT).show();
                 return;
             }
-            zeroMQService.sendCommand("OFF");
+            zeroMQService.sendCommand("0");
             ledIsOn = false;
             updateLedUI();
         });
 
-      
+
         switchMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
             isManualMode = isChecked;
 
             if (isChecked) {
                 ngaturCerah.setAlpha(1f);
+                kecerahan.setVisibility(View.VISIBLE);
                 mode.setText("MANUAL");
                 mode.setTextColor(ContextCompat.getColor(this, R.color.oranye));
-                warning.setText("Potensio diabaikan — kontrol via slider");
+                warning.setText("Potensio diabaikan, kontrol via slider");
                 warning.setTextColor(ContextCompat.getColor(this, R.color.oranye));
                 zeroMQService.sendCommand("MODE:MANUAL");
             } else {
-                ngaturCerah.setEnabled(true); //  HARUS TRUE biar bisa digeser oleh kode JSON
+                ngaturCerah.setEnabled(true);
                 mode.setText("AUTO (Potensio)");
                 mode.setTextColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark));
                 warning.setText("Aktifkan switch untuk kontrol manual");
@@ -113,13 +111,11 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
             }
         });
 
-        
+
         ngaturCerah.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 kecerahan.setText(progress + "%");
-
-                // Hanya simpan brightnessLevel jika yang menggeser adalah USER (bukan kode Python)
                 if (fromUser) {
                     brightnessLevel = progress;
                 }
@@ -195,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
         }
     }
 
-    // ===== CALLBACK DARI ZeroMQService =====
+
     @Override
     public void onConnected() {
         updateConnectionUI(true, "TERHUBUNG");
@@ -210,30 +206,13 @@ public class MainActivity extends AppCompatActivity implements ZeroMQService.Lis
 
 
     @Override
-    public void onVoltageReceived(String dataJson) {
-        try {
-            JSONObject json = new JSONObject(dataJson);
-            String voltage = json.getString("v");
-            int pwmPercent = json.getInt("p"); // Nilai 0-100
-
-            teganganSTM.setText(voltage + " V");
-
-
-            if (!isManualMode) {
-
-                ngaturCerah.setProgress(pwmPercent);
-                kecerahan.setText(pwmPercent + "%");
-
-            }
-
-        } catch (Exception e) {
-            // misal python ga ngirim Json setidaknya tegangan tetep kebaca meskipun slider ga gerak
-            teganganSTM.setText(dataJson);
-        }
+    public void terimaDataTegangan(String dataTegangan) {
+        String hasilTegangan = dataTegangan.replace("\r", "").replace("\n", "").trim();
+        teganganSTM.setText(hasilTegangan + " V");
     }
 
     @Override
-    public void onLedStatusReceived(String status) {
+    public void terimaStatusLed(String status) {
         ledIsOn = "ON".equalsIgnoreCase(status);
         updateLedUI();
     }

@@ -12,7 +12,6 @@
         android:orientation="vertical"
         android:padding="20dp">
 
-        <!-- Header & Status -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -39,7 +38,6 @@
                 android:textColor="@color/white" />
         </LinearLayout>
 
-        <!-- Card Tegangan -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="200dp"
@@ -164,7 +162,6 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Tombol ON / OFF -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -196,7 +193,6 @@
                 android:textColor="@color/white" />
         </LinearLayout>
 
-        <!-- Footer Info -->
         <TextView
             android:id="@+id/server"
             android:layout_width="match_parent"
